@@ -89,6 +89,6 @@ int main()
 	test_copy_and_move();
 	test_equal_operator();
 
-	std::cout << "All tests passed!\n";
+	std::cout << "\n\n" << "All tests passed!\n";
 	return 0;
 }

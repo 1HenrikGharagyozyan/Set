@@ -9,33 +9,43 @@
 #include <memory>
 #include <initializer_list>
 #include <queue>
-#include "Set.h"
 
 struct EmptyStruct {};
 
-
-inline bool operator==(const EmptyStruct&, const EmptyStruct&) 
+inline bool operator==(const EmptyStruct&, const EmptyStruct&)
 {
     return true;
 }
 
-inline bool operator!=(const EmptyStruct&, const EmptyStruct&) 
+inline bool operator!=(const EmptyStruct&, const EmptyStruct&)
 {
     return false;
 }
 
-template<typename Key, typename T = EmptyStruct, typename Compare = std::less<Key>>
-class RedBlackTree 
+
+
+template<typename Key, typename T = EmptyStruct, typename Compare = std::less<Key>, bool AllowDuplicates = false>
+class RedBlackTree
 {
-    enum Color 
-    { 
-        RED, 
-        BLACK 
+public:
+    using key_type = Key;
+    using mapped_type = T;
+    using value_type = std::pair<const Key, T>;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+    using pointer = value_type*;
+    using const_pointer = const value_type*;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+
+private:
+    enum Color
+    {
+        RED,
+        BLACK
     };
 
-    using value_type = std::pair<const Key, T>;
-
-    struct Node 
+    struct Node
     {
         value_type data;
         Node* parent;
@@ -48,7 +58,7 @@ class RedBlackTree
             , parent(p)
             , left(nullptr)
             , right(nullptr)
-            , color(c) 
+            , color(c)
         {
         }
     };
@@ -66,17 +76,7 @@ class RedBlackTree
     Compare _comp;
 
 public:
-    using key_type = Key;
-    using mapped_type = T;
-    using value_type = std::pair<const Key, T>;
-    using reference = value_type&;
-    using const_reference = const value_type&;
-    using pointer = value_type*;
-    using const_pointer = const value_type*;
-    using size_type = std::size_t;
-    using difference_type = std::ptrdiff_t;
-
-    class Iterator 
+    class Iterator
     {
     private:
         Node* _node;
@@ -104,7 +104,7 @@ public:
         Iterator& operator++();
         Iterator operator++(int);
 
-        Iterator& operator--(); 
+        Iterator& operator--();
         Iterator operator--(int);
 
         bool operator==(const Iterator& other) const;
@@ -114,7 +114,7 @@ public:
     };
 
 
-    class ConstIterator 
+    class ConstIterator
     {
     private:
         Iterator _it;
@@ -244,10 +244,10 @@ private:
     void postorder_helper(Node* node, std::function<void(const_reference)> visit) const;
 };
 
-template<typename Key, typename T, typename Compare>
-inline RedBlackTree<Key, T, Compare>::RedBlackTree()
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline RedBlackTree<Key, T, Compare, AllowDuplicates>::RedBlackTree()
     : _tree_size(0)
-    , _comp(Compare()) 
+    , _comp(Compare())
 {
     _nil = new Node();
     _nil->color = BLACK;
@@ -255,45 +255,47 @@ inline RedBlackTree<Key, T, Compare>::RedBlackTree()
     _root = _nil;
 }
 
-template<typename Key, typename T, typename Compare>
-inline RedBlackTree<Key, T, Compare>::RedBlackTree(const RedBlackTree& other)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline RedBlackTree<Key, T, Compare, AllowDuplicates>::RedBlackTree(const RedBlackTree& other)
     : RedBlackTree()
 {
     copy_helper(other._root, other._nil);
 }
 
-template<typename Key, typename T, typename Compare>
-inline RedBlackTree<Key, T, Compare>::RedBlackTree(RedBlackTree&& other) noexcept
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline RedBlackTree<Key, T, Compare, AllowDuplicates>::RedBlackTree(RedBlackTree&& other) noexcept
     : _root(other._root)
     , _nil(other._nil)
     , _tree_size(other._tree_size)
     , _comp(std::move(other._comp))
 {
-
-    other._nil = new Node();
+    // Восстанавливаем other в пустое валидное состояние
+    other._nil = new Node(); // создаём новый nil-узел
     other._nil->color = BLACK;
     other._nil->left = other._nil->right = other._nil->parent = nullptr;
-    other._root = other._nil;
+
+    other._root = other._nil;  // указывает на пустое дерево
     other._tree_size = 0;
 }
 
-template<typename Key, typename T, typename Compare>
-inline RedBlackTree<Key, T, Compare>::RedBlackTree(std::initializer_list<value_type> init)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline RedBlackTree<Key, T, Compare, AllowDuplicates>::RedBlackTree(std::initializer_list<value_type> init)
     : RedBlackTree()
 {
     for (const auto& elem : init)
         insert(elem);
 }
 
-template<typename Key, typename T, typename Compare>
-inline RedBlackTree<Key, T, Compare>::~RedBlackTree()
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline RedBlackTree<Key, T, Compare, AllowDuplicates>::~RedBlackTree()
 {
     clear();
     delete _nil;
 }
 
-template<typename Key, typename T, typename Compare>
-inline RedBlackTree<Key, T, Compare>& RedBlackTree<Key, T, Compare>::operator=(const RedBlackTree& other)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline RedBlackTree<Key, T, Compare, AllowDuplicates>& 
+        RedBlackTree<Key, T, Compare, AllowDuplicates>::operator=(const RedBlackTree& other)
 {
     if (this != &other)
     {
@@ -303,36 +305,39 @@ inline RedBlackTree<Key, T, Compare>& RedBlackTree<Key, T, Compare>::operator=(c
     return *this;
 }
 
-template<typename Key, typename T, typename Compare>
-inline RedBlackTree<Key, T, Compare>& RedBlackTree<Key, T, Compare>::operator=(RedBlackTree&& other) noexcept
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline RedBlackTree<Key, T, Compare, AllowDuplicates>& 
+        RedBlackTree<Key, T, Compare, AllowDuplicates>::operator=(RedBlackTree&& other) noexcept
 {
     if (this != &other)
     {
-        clear();
-        delete _nil;
+        clear();      // удалить текущие узлы
+        delete _nil;  // удалить текущий sentinel
 
         _root = other._root;
         _nil = other._nil;
         _tree_size = other._tree_size;
         _comp = std::move(other._comp);
 
+        // Восстанавливаем other
         other._nil = new Node();
         other._nil->color = BLACK;
         other._nil->left = other._nil->right = other._nil->parent = nullptr;
+
         other._root = other._nil;
         other._tree_size = 0;
     }
     return *this;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::size_type RedBlackTree<Key, T, Compare>::size() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::size_type RedBlackTree<Key, T, Compare, AllowDuplicates>::size() const
 {
     return _tree_size;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::size_type RedBlackTree<Key, T, Compare>::height() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::size_type RedBlackTree<Key, T, Compare, AllowDuplicates>::height() const
 {
     std::function<size_type(Node*)> dfs = [&](Node* node) -> size_type
         {
@@ -345,42 +350,45 @@ typename RedBlackTree<Key, T, Compare>::size_type RedBlackTree<Key, T, Compare>:
     return dfs(_root);
 }
 
-template<typename Key, typename T, typename Compare>
-inline bool RedBlackTree<Key, T, Compare>::empty() const
-{ 
-    return _tree_size == 0; 
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline bool RedBlackTree<Key, T, Compare, AllowDuplicates>::empty() const
+{
+    return _tree_size == 0;
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::clear() 
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::clear()
 {
     clear_helper(_root);
     _root = _nil;
     _tree_size = 0;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::iterator RedBlackTree<Key, T, Compare>::find(const Key& key)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::find(const Key& key)
 {
     Node* result = find_helper(key);
     return (result != _nil) ? iterator(result, _nil, _root) : end();
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::const_iterator RedBlackTree<Key, T, Compare>::find(const Key& key) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::find(const Key& key) const
 {
     Node* result = find_helper(key);
     return (result != _nil) ? const_iterator(result, _nil, _root) : end();
 }
 
-template<typename Key, typename T, typename Compare>
-inline bool RedBlackTree<Key, T, Compare>::contains(const Key& key) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline bool RedBlackTree<Key, T, Compare, AllowDuplicates>::contains(const Key& key) const
 {
     return find_helper(key) != _nil;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::iterator RedBlackTree<Key, T, Compare>::lower_bound(const Key& key)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::lower_bound(const Key& key)
 {
     Node* current = _root;
     Node* result = _nil;
@@ -398,8 +406,9 @@ typename RedBlackTree<Key, T, Compare>::iterator RedBlackTree<Key, T, Compare>::
     return iterator(result, _nil, _root);
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::const_iterator RedBlackTree<Key, T, Compare>::lower_bound(const Key& key) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::lower_bound(const Key& key) const
 {
     Node* current = _root;
     Node* result = _nil;
@@ -417,8 +426,9 @@ typename RedBlackTree<Key, T, Compare>::const_iterator RedBlackTree<Key, T, Comp
     return const_iterator(result, _nil, _root);
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::iterator RedBlackTree<Key, T, Compare>::upper_bound(const Key& key)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::upper_bound(const Key& key)
 {
     Node* current = _root;
     Node* result = _nil;
@@ -436,8 +446,9 @@ typename RedBlackTree<Key, T, Compare>::iterator RedBlackTree<Key, T, Compare>::
     return iterator(result, _nil, _root);
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::const_iterator RedBlackTree<Key, T, Compare>::upper_bound(const Key& key) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::upper_bound(const Key& key) const
 {
     Node* current = _root;
     Node* result = _nil;
@@ -455,21 +466,24 @@ typename RedBlackTree<Key, T, Compare>::const_iterator RedBlackTree<Key, T, Comp
     return const_iterator(result, _nil, _root);
 }
 
-template<typename Key, typename T, typename Compare>
-inline std::pair<typename RedBlackTree<Key, T, Compare>::iterator, typename RedBlackTree<Key, T, Compare>::iterator> 
-        RedBlackTree<Key, T, Compare>::equal_range(const Key& key)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline std::pair<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator, typename RedBlackTree
+    <Key, T, Compare, AllowDuplicates>::iterator> RedBlackTree<Key, T, Compare, AllowDuplicates>::equal_range(const Key& key)
 {
     return { lower_bound(key), upper_bound(key) };
 }
 
-template<typename Key, typename T, typename Compare>
-inline std::pair<typename RedBlackTree<Key, T, Compare>::const_iterator, typename RedBlackTree<Key, T, Compare>::const_iterator>             RedBlackTree<Key, T, Compare>::equal_range(const Key& key) const        
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline std::pair<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_iterator, 
+    typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_iterator> 
+    RedBlackTree<Key, T, Compare, AllowDuplicates>::equal_range(const Key& key) const
 {
     return { lower_bound(key), upper_bound(key) };
 }
 
-template<typename Key, typename T, typename Compare>
-std::pair<typename RedBlackTree<Key, T, Compare>::iterator, bool> RedBlackTree<Key, T, Compare>::insert(const value_type& val)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+std::pair<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator, bool> 
+        RedBlackTree<Key, T, Compare, AllowDuplicates>::insert(const value_type& val)
 {
     Node* z = create_node(val.first, val.second);
     Node* y = _nil;
@@ -482,11 +496,13 @@ std::pair<typename RedBlackTree<Key, T, Compare>::iterator, bool> RedBlackTree<K
             x = x->left;
         else if (_comp(x->data.first, z->data.first))
             x = x->right;
-        else
+        else if constexpr (!AllowDuplicates)
         {
             delete z;
             return { iterator(x, _nil), false };
         }
+        else
+            x = x->right;
     }
 
     z->parent = y;
@@ -502,8 +518,8 @@ std::pair<typename RedBlackTree<Key, T, Compare>::iterator, bool> RedBlackTree<K
     return { iterator(z, _nil), true };
 }
 
-template<typename Key, typename T, typename Compare>
-inline bool RedBlackTree<Key, T, Compare>::erase(const Key& key)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline bool RedBlackTree<Key, T, Compare, AllowDuplicates>::erase(const Key& key)
 {
     Node* z = find_helper(key);
     if (z == _nil)
@@ -514,128 +530,140 @@ inline bool RedBlackTree<Key, T, Compare>::erase(const Key& key)
     return true;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::iterator RedBlackTree<Key, T, Compare>::begin()
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator RedBlackTree<Key, T, Compare, AllowDuplicates>::begin()
 {
     return iterator(minimum(_root), _nil, _root);
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::iterator RedBlackTree<Key, T, Compare>::end()
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator RedBlackTree<Key, T, Compare, AllowDuplicates>::end()
 {
     return iterator(_nil, _nil, _root);
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::const_iterator RedBlackTree<Key, T, Compare>::begin() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::begin() const
 {
     return const_iterator(minimum(_root), _nil, _root);
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::const_iterator RedBlackTree<Key, T, Compare>::end() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_iterator RedBlackTree<Key, T, Compare, AllowDuplicates>::end() const
 {
     return const_iterator(_nil, _nil, _root);
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::const_iterator RedBlackTree<Key, T, Compare>::cbegin() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::cbegin() const
 {
     return begin();
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::const_iterator RedBlackTree<Key, T, Compare>::cend() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_iterator RedBlackTree<Key, T, Compare, AllowDuplicates>::cend() const
 {
     return end();
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::reverse_iterator RedBlackTree<Key, T, Compare>::rbegin()
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::reverse_iterator RedBlackTree<Key, T, Compare, AllowDuplicates>::rbegin()
 {
     return reverse_iterator(end());
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::reverse_iterator RedBlackTree<Key, T, Compare>::rend()
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::reverse_iterator RedBlackTree<Key, T, Compare, AllowDuplicates>::rend()
 {
     return reverse_iterator(begin());
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::const_reverse_iterator RedBlackTree<Key, T, Compare>::rbegin() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_reverse_iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::rbegin() const
 {
     return const_reverse_iterator(end());
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::const_reverse_iterator RedBlackTree<Key, T, Compare>::rend() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_reverse_iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::rend() const
 {
     return const_reverse_iterator(begin());
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::const_reverse_iterator RedBlackTree<Key, T, Compare>::crbegin() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_reverse_iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::crbegin() const
 {
     return rbegin();
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::const_reverse_iterator RedBlackTree<Key, T, Compare>::crend() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_reverse_iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::crend() const
 {
     return rend();
 }
 
-template<typename Key, typename T, typename Compare>
-inline std::vector<typename RedBlackTree<Key, T, Compare>::value_type> RedBlackTree<Key, T, Compare>::inorder() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline std::vector<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::value_type> 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::inorder() const
 {
     std::vector<value_type> result;
     inorder([&](const_reference value) { result.push_back(value); });
     return result;
 }
 
-template<typename Key, typename T, typename Compare>
-inline std::vector<typename RedBlackTree<Key, T, Compare>::value_type> RedBlackTree<Key, T, Compare>::preorder() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline std::vector<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::value_type> 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::preorder() const
 {
     std::vector<value_type> result;
     preorder([&](const_reference value) { result.push_back(value); });
     return result;
 }
 
-template<typename Key, typename T, typename Compare>
-inline std::vector<typename RedBlackTree<Key, T, Compare>::value_type> RedBlackTree<Key, T, Compare>::postorder() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline std::vector<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::value_type> 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::postorder() const
 {
     std::vector<value_type> result;
     postorder([&](const_reference value) { result.push_back(value); });
     return result;
 }
 
-template<typename Key, typename T, typename Compare>
-inline std::vector<typename RedBlackTree<Key, T, Compare>::value_type> RedBlackTree<Key, T, Compare>::levelorder() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline std::vector<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::value_type> 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::levelorder() const
 {
     std::vector<value_type> result;
     levelorder([&](const_reference value) { result.push_back(value); });
     return result;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Node* RedBlackTree<Key, T, Compare>::minimum(Node* x) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Node* 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::minimum(Node* x) const
 {
     while (x != _nil && x->left != _nil)
         x = x->left;
     return x;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Node* RedBlackTree<Key, T, Compare>::maximum(Node* x) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Node* 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::maximum(Node* x) const
 {
     while (x != _nil && x->right != _nil)
         x = x->right;
     return x;
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::clear_helper(Node* node)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::clear_helper(Node* node)
 {
     if (node == _nil)
         return;
@@ -644,24 +672,24 @@ inline void RedBlackTree<Key, T, Compare>::clear_helper(Node* node)
     delete node;
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::insert_fix(Node* z)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::insert_fix(Node* z)
 {
-    while (z->parent && z->parent->color == RED) 
+    while (z->parent && z->parent->color == RED)
     {
-        if (z->parent == z->parent->parent->left) 
+        if (z->parent == z->parent->parent->left)
         {
             Node* y = z->parent->parent->right;
-            if (y->color == RED) 
+            if (y->color == RED)
             {
                 z->parent->color = BLACK;
                 y->color = BLACK;
                 z->parent->parent->color = RED;
                 z = z->parent->parent;
             }
-            else 
+            else
             {
-                if (z == z->parent->right) 
+                if (z == z->parent->right)
                 {
                     z = z->parent;
                     rotate_left(z);
@@ -671,17 +699,17 @@ inline void RedBlackTree<Key, T, Compare>::insert_fix(Node* z)
                 rotate_right(z->parent->parent);
             }
         }
-        else 
+        else
         {
             Node* y = z->parent->parent->left;
-            if (y->color == RED) 
+            if (y->color == RED)
             {
                 z->parent->color = BLACK;
                 y->color = BLACK;
                 z->parent->parent->color = RED;
                 z = z->parent->parent;
             }
-            else 
+            else
             {
                 if (z == z->parent->left)
                 {
@@ -697,8 +725,8 @@ inline void RedBlackTree<Key, T, Compare>::insert_fix(Node* z)
     _root->color = BLACK;
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::transplant(Node* u, Node* v)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::transplant(Node* u, Node* v)
 {
     if (u->parent == _nil)
         _root = v;
@@ -709,8 +737,8 @@ inline void RedBlackTree<Key, T, Compare>::transplant(Node* u, Node* v)
     v->parent = u->parent;
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::delete_node(Node* z)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::delete_node(Node* z)
 {
     Node* y = z;
     Node* x;
@@ -753,15 +781,15 @@ inline void RedBlackTree<Key, T, Compare>::delete_node(Node* z)
         erase_fix(x);
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::erase_fix(Node* x)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::erase_fix(Node* x)
 {
-    while (x != _root && x->color == BLACK) 
+    while (x != _root && x->color == BLACK)
     {
-        if (x == x->parent->left) 
+        if (x == x->parent->left)
         {
             Node* w = x->parent->right;
-            if (w->color == RED) 
+            if (w->color == RED)
             {
                 w->color = BLACK;
                 x->parent->color = RED;
@@ -769,14 +797,14 @@ inline void RedBlackTree<Key, T, Compare>::erase_fix(Node* x)
                 w = x->parent->right;
             }
 
-            if (w->left->color == BLACK && w->right->color == BLACK) 
+            if (w->left->color == BLACK && w->right->color == BLACK)
             {
                 w->color = RED;
                 x = x->parent;
             }
-            else 
+            else
             {
-                if (w->right->color == BLACK) 
+                if (w->right->color == BLACK)
                 {
                     w->left->color = BLACK;
                     w->color = RED;
@@ -791,10 +819,10 @@ inline void RedBlackTree<Key, T, Compare>::erase_fix(Node* x)
                 x = _root;
             }
         }
-        else 
+        else
         {
             Node* w = x->parent->left;
-            if (w->color == RED) 
+            if (w->color == RED)
             {
                 w->color = BLACK;
                 x->parent->color = RED;
@@ -802,14 +830,14 @@ inline void RedBlackTree<Key, T, Compare>::erase_fix(Node* x)
                 w = x->parent->left;
             }
 
-            if (w->right->color == BLACK && w->left->color == BLACK) 
+            if (w->right->color == BLACK && w->left->color == BLACK)
             {
                 w->color = RED;
                 x = x->parent;
             }
-            else 
+            else
             {
-                if (w->left->color == BLACK) 
+                if (w->left->color == BLACK)
                 {
                     w->right->color = BLACK;
                     w->color = RED;
@@ -829,8 +857,9 @@ inline void RedBlackTree<Key, T, Compare>::erase_fix(Node* x)
     x->color = BLACK;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Node* RedBlackTree<Key, T, Compare>::find_helper(const Key& key) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Node* 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::find_helper(const Key& key) const
 {
     Node* current = _root;
     while (current != _nil)
@@ -845,8 +874,8 @@ typename RedBlackTree<Key, T, Compare>::Node* RedBlackTree<Key, T, Compare>::fin
     return _nil;
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::copy_helper(const Node* node, const Node* source_nil)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::copy_helper(const Node* node, const Node* source_nil)
 {
     if (node == source_nil)
         return;
@@ -855,8 +884,8 @@ inline void RedBlackTree<Key, T, Compare>::copy_helper(const Node* node, const N
     copy_helper(node->right, source_nil);
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::inorder_helper(Node* node, std::function<void(const_reference)> visit) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::inorder_helper(Node* node, std::function<void(const_reference)> visit) const
 {
     if (node == _nil)
         return;
@@ -865,8 +894,9 @@ inline void RedBlackTree<Key, T, Compare>::inorder_helper(Node* node, std::funct
     inorder_helper(node->right, visit);
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::preorder_helper(Node* node, std::function<void(const_reference)> visit) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::preorder_helper(Node* node, 
+                std::function<void(const_reference)> visit) const
 {
     if (node == _nil)
         return;
@@ -875,8 +905,9 @@ inline void RedBlackTree<Key, T, Compare>::preorder_helper(Node* node, std::func
     preorder_helper(node->right, visit);
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::postorder_helper(Node* node, std::function<void(const_reference)> visit) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::postorder_helper(Node* node, 
+                std::function<void(const_reference)> visit) const
 {
     if (node == _nil)
         return;
@@ -885,8 +916,8 @@ inline void RedBlackTree<Key, T, Compare>::postorder_helper(Node* node, std::fun
     visit(node->data);
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::rotate_left(Node* x)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::rotate_left(Node* x)
 {
     Node* y = x->right;
     x->right = y->left;
@@ -903,8 +934,8 @@ inline void RedBlackTree<Key, T, Compare>::rotate_left(Node* x)
     x->parent = y;
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::rotate_right(Node* x)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::rotate_right(Node* x)
 {
     Node* y = x->left;
     x->left = y->right;
@@ -921,24 +952,27 @@ inline void RedBlackTree<Key, T, Compare>::rotate_right(Node* x)
     x->parent = y;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Node* RedBlackTree<Key, T, Compare>::Iterator::minimum(Node* x) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Node* 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::minimum(Node* x) const
 {
     while (x->left != _nil)
         x = x->left;
     return x;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Node* RedBlackTree<Key, T, Compare>::Iterator::maximum(Node* x) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Node* 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::maximum(Node* x) const
 {
     while (x->right != _nil)
         x = x->right;
     return x;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Node* RedBlackTree<Key, T, Compare>::Iterator::successor(Node* x) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Node* 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::successor(Node* x) const
 {
     if (x->right != _nil)
         return minimum(x->right);
@@ -951,13 +985,14 @@ typename RedBlackTree<Key, T, Compare>::Node* RedBlackTree<Key, T, Compare>::Ite
     return y ? y : _nil;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Node* RedBlackTree<Key, T, Compare>::Iterator::predecessor(Node* x) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Node* 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::predecessor(Node* x) const
 {
-    if (x->left != _nil) 
+    if (x->left != _nil)
         return maximum(x->left);
     Node* y = x->parent;
-    while (y != nullptr && x == y->left) 
+    while (y != nullptr && x == y->left)
     {
         x = y;
         y = y->parent;
@@ -965,43 +1000,48 @@ typename RedBlackTree<Key, T, Compare>::Node* RedBlackTree<Key, T, Compare>::Ite
     return y ? y : _nil;
 }
 
-template<typename Key, typename T, typename Compare>
-inline RedBlackTree<Key, T, Compare>::Iterator::Iterator(Node* node, Node* nil, Node* root)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::Iterator(Node* node, Node* nil, Node* root)
     : _node(node)
     , _nil(nil)
     , _root(root)
 {
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Iterator::reference RedBlackTree<Key, T, Compare>::Iterator::operator*() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::reference 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::operator*() const
 {
     return _node->data;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Iterator::pointer RedBlackTree<Key, T, Compare>::Iterator::operator->() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::pointer 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::operator->() const
 {
     return &_node->data;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Iterator::Iterator& RedBlackTree<Key, T, Compare>::Iterator::operator++()
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::Iterator& 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::operator++()
 {
     _node = successor(_node);
     return *this;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Iterator::Iterator RedBlackTree<Key, T, Compare>::Iterator::operator++(int)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::Iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::operator++(int)
 {
     Iterator temp = *this;
     ++(*this);
     return temp;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Iterator::Iterator& RedBlackTree<Key, T, Compare>::Iterator::operator--()
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::Iterator& 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::operator--()
 {
     if (_node == _nil)
         _node = maximum(_root);
@@ -1010,68 +1050,74 @@ typename RedBlackTree<Key, T, Compare>::Iterator::Iterator& RedBlackTree<Key, T,
     return *this;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Iterator::Iterator RedBlackTree<Key, T, Compare>::Iterator::operator--(int)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::Iterator 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::operator--(int)
 {
     Iterator temp = *this;
     --(*this);
     return temp;
 }
 
-template<typename Key, typename T, typename Compare>
-inline bool RedBlackTree<Key, T, Compare>::Iterator::operator==(const Iterator& other) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline bool RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::operator==(const Iterator& other) const
 {
     return _node == other._node;
 }
 
-template<typename Key, typename T, typename Compare>
-inline bool RedBlackTree<Key, T, Compare>::Iterator::operator!=(const Iterator& other) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline bool RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::operator!=(const Iterator& other) const
 {
     return _node != other._node;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::Node* RedBlackTree<Key, T, Compare>::Iterator::node() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::Node* 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::Iterator::node() const
 {
     return _node;
 }
 
-template<typename Key, typename T, typename Compare>
-inline RedBlackTree<Key, T, Compare>::ConstIterator::ConstIterator(Node* node, Node* nil, Node* root)
-    : _it(node, nil, root) 
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::ConstIterator(Node* node, Node* nil, Node* root)
+    : _it(node, nil, root)
 {
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::ConstIterator::reference RedBlackTree<Key, T, Compare>::ConstIterator::operator*() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::reference 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::operator*() const
 {
     return *_it;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::ConstIterator::pointer RedBlackTree<Key, T, Compare>::ConstIterator::operator->() const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::pointer 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::operator->() const
 {
     return &this->_node->data;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::ConstIterator::ConstIterator& RedBlackTree<Key, T, Compare>::ConstIterator::operator++()
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::ConstIterator& 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::operator++()
 {
     ++_it;
     return *this;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::ConstIterator::ConstIterator 
-        RedBlackTree<Key, T, Compare>::ConstIterator::operator++(int)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::ConstIterator
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::operator++(int)
 {
     Iterator temp = *this;
     ++(*this);
     return temp;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::ConstIterator::ConstIterator& RedBlackTree<Key, T, Compare>::ConstIterator::operator--()
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::ConstIterator& 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::operator--()
 {
     if (this->_node == _nil)
         this->_node = maximum(this->_root);
@@ -1080,47 +1126,47 @@ typename RedBlackTree<Key, T, Compare>::ConstIterator::ConstIterator& RedBlackTr
     return *this;
 }
 
-template<typename Key, typename T, typename Compare>
-typename RedBlackTree<Key, T, Compare>::ConstIterator::ConstIterator 
-        RedBlackTree<Key, T, Compare>::ConstIterator::operator--(int)
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+typename RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::ConstIterator
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::operator--(int)
 {
     Iterator temp = *this;
     --(*this);
     return temp;
 }
 
-template<typename Key, typename T, typename Compare>
-inline bool RedBlackTree<Key, T, Compare>::ConstIterator::operator==(const ConstIterator& other) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline bool RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::operator==(const ConstIterator& other) const
 {
     return _it == other._it;
 }
 
-template<typename Key, typename T, typename Compare>
-inline bool RedBlackTree<Key, T, Compare>::ConstIterator::operator!=(const ConstIterator& other) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline bool RedBlackTree<Key, T, Compare, AllowDuplicates>::ConstIterator::operator!=(const ConstIterator& other) const
 {
     return _it != other._it;
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::inorder(std::function<void(const_reference)> visit) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::inorder(std::function<void(const_reference)> visit) const
 {
     inorder_helper(_root, visit);
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::preorder(std::function<void(const_reference)> visit) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::preorder(std::function<void(const_reference)> visit) const
 {
     preorder_helper(_root, visit);
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::postorder(std::function<void(const_reference)> visit) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::postorder(std::function<void(const_reference)> visit) const
 {
     postorder_helper(_root, visit);
 }
 
-template<typename Key, typename T, typename Compare>
-inline void RedBlackTree<Key, T, Compare>::levelorder(std::function<void(const_reference)> visit) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline void RedBlackTree<Key, T, Compare, AllowDuplicates>::levelorder(std::function<void(const_reference)> visit) const
 {
     if (_root == _nil)
         return;
@@ -1140,8 +1186,8 @@ inline void RedBlackTree<Key, T, Compare>::levelorder(std::function<void(const_r
     }
 }
 
-template<typename Key, typename T, typename Compare>
-inline bool RedBlackTree<Key, T, Compare>::operator==(const RedBlackTree& other) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline bool RedBlackTree<Key, T, Compare, AllowDuplicates>::operator==(const RedBlackTree& other) const
 {
     if (this == &other)
         return true;
@@ -1161,41 +1207,46 @@ inline bool RedBlackTree<Key, T, Compare>::operator==(const RedBlackTree& other)
     return true;
 }
 
-template<typename Key, typename T, typename Compare>
-inline bool RedBlackTree<Key, T, Compare>::operator!=(const RedBlackTree& other) const
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline bool RedBlackTree<Key, T, Compare, AllowDuplicates>::operator!=(const RedBlackTree& other) const
 {
     return !(*this == other);
 }
 
-template<typename Key, typename T, typename Compare>
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
 template<typename U>
-inline RedBlackTree<Key, T, Compare>::RedBlackTree(std::initializer_list<key_type> init, 
-            std::enable_if_t<std::is_same<U, EmptyStruct>::value>*)
-    : RedBlackTree() 
+inline RedBlackTree<Key, T, Compare, AllowDuplicates>::RedBlackTree(std::initializer_list<key_type> init,
+    std::enable_if_t<std::is_same<U, EmptyStruct>::value>*)
+    : RedBlackTree()
 {
     for (const auto& key : init)
         insert(key);
 }
 
-template<typename Key, typename T, typename Compare>
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
 template<typename ...Args>
-inline std::pair<typename RedBlackTree<Key, T, Compare>::iterator, bool> RedBlackTree<Key, T, Compare>::emplace(Args && ...args)
+inline std::pair<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator, bool> 
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::emplace(Args && ...args)
 {
     return insert(value_type(std::forward<Args>(args)...));
 }
 
-template<typename Key, typename T, typename Compare>
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
 template<typename U>
-inline std::enable_if_t<std::is_same<U, EmptyStruct>::value, std::pair<typename RedBlackTree<Key, T, Compare>::iterator, bool>>
-        RedBlackTree<Key, T, Compare>::insert(const Key& key)
+inline std::enable_if_t<std::is_same<U, EmptyStruct>::value, 
+            std::pair<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator, bool>>
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::insert(const Key& key)
 {
     return insert(std::make_pair(key, EmptyStruct{}));
 }
 
-template<typename Key, typename T, typename Compare>
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
 template<typename U>
-inline std::enable_if_t<std::is_same<U, EmptyStruct>::value, std::pair<typename RedBlackTree<Key, T, Compare>::iterator, bool>>     
-        RedBlackTree<Key, T, Compare>::emplace(const Key& key)
+inline std::enable_if_t<std::is_same<U, EmptyStruct>::value, 
+            std::pair<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator, bool>>
+            RedBlackTree<Key, T, Compare, AllowDuplicates>::emplace(const Key& key)
 {
     return insert(std::make_pair(key, EmptyStruct{}));
 }
+
+
