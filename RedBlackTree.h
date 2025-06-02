@@ -27,7 +27,7 @@ inline bool operator!=(const EmptyStruct&, const EmptyStruct&)
 template<typename Key, typename T = EmptyStruct, typename Compare = std::less<Key>, bool AllowDuplicates = false>
 class RedBlackTree
 {
-public:
+public: 
     using key_type = Key;
     using mapped_type = T;
     using value_type = std::pair<const Key, T>;
