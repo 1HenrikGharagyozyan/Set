@@ -27,7 +27,7 @@ inline bool operator!=(const EmptyStruct&, const EmptyStruct&)
 template<typename Key, typename T = EmptyStruct, typename Compare = std::less<Key>, bool AllowDuplicates = false>
 class RedBlackTree
 {
-public: 
+public:
     using key_type = Key;
     using mapped_type = T;
     using value_type = std::pair<const Key, T>;
@@ -61,6 +61,15 @@ private:
             , color(c)
         {
         }
+
+        Node(Key&& k, T&& val, Color c = BLACK, Node* p = nullptr)
+            : data(std::make_pair(std::move(k), std::move(val)))
+            , parent(p)
+            , left(nullptr)
+            , right(nullptr)
+            , color(c)
+        {
+        }
     };
 
     Node* create_node(const Key& key, const T& value, Color color = RED, Node* parent = nullptr)
@@ -69,6 +78,14 @@ private:
         node->left = node->right = _nil;
         return node;
     }
+
+    Node* create_node(Key&& key, T&& value, Color color = RED, Node* parent = nullptr)
+    {
+        Node* node = new Node(std::move(key), std::move(value), color, parent);
+        node->left = node->right = _nil;
+        return node;
+    }
+
 
     Node* _root;
     Node* _nil;
@@ -180,6 +197,7 @@ public:
     std::pair<const_iterator, const_iterator> equal_range(const Key& key) const;
 
     std::pair<iterator, bool> insert(const value_type& val);
+    std::pair<iterator, bool> insert(value_type&& val);
 
     bool erase(const Key& key);
 
@@ -482,10 +500,47 @@ inline std::pair<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::const_
 }
 
 template<typename Key, typename T, typename Compare, bool AllowDuplicates>
-std::pair<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator, bool> 
+        std::pair<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator, bool> 
         RedBlackTree<Key, T, Compare, AllowDuplicates>::insert(const value_type& val)
 {
     Node* z = create_node(val.first, val.second);
+    Node* y = _nil;
+    Node* x = _root;
+
+    while (x != _nil)
+    {
+        y = x;
+        if (_comp(z->data.first, x->data.first))
+            x = x->left;
+        else if (_comp(x->data.first, z->data.first))
+            x = x->right;
+        else if constexpr (!AllowDuplicates)
+        {
+            delete z;
+            return { iterator(x, _nil), false };
+        }
+        else
+            x = x->right;
+    }
+
+    z->parent = y;
+    if (y == _nil)
+        _root = z;
+    else if (_comp(z->data.first, y->data.first))
+        y->left = z;
+    else
+        y->right = z;
+
+    insert_fix(z);
+    ++_tree_size;
+    return { iterator(z, _nil), true };
+}
+
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+        std::pair<typename RedBlackTree<Key, T, Compare, AllowDuplicates>::iterator, bool>
+        RedBlackTree<Key, T, Compare, AllowDuplicates>::insert(value_type&& val)
+{
+    Node* z = create_node(std::move(val.first), std::move(val.second));
     Node* y = _nil;
     Node* x = _root;
 
