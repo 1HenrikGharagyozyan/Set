@@ -168,6 +168,8 @@ public:
     RedBlackTree(const RedBlackTree& other);
     RedBlackTree(RedBlackTree&& other) noexcept;
     RedBlackTree(std::initializer_list<value_type> init);
+    explicit RedBlackTree(const Compare& comp);
+    explicit RedBlackTree(Compare&& comp);
     ~RedBlackTree();
 
     template<typename U = T>
@@ -302,6 +304,28 @@ inline RedBlackTree<Key, T, Compare, AllowDuplicates>::RedBlackTree(std::initial
 {
     for (const auto& elem : init)
         insert(elem);
+}
+
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline RedBlackTree<Key, T, Compare, AllowDuplicates>::RedBlackTree(const Compare& comp)
+    : _tree_size(0)
+    , _comp(comp)
+{
+    _nil = new Node();
+    _nil->color = BLACK;
+    _nil->left = _nil->right = _nil->parent = nullptr;
+    _root = _nil;
+}
+
+template<typename Key, typename T, typename Compare, bool AllowDuplicates>
+inline RedBlackTree<Key, T, Compare, AllowDuplicates>::RedBlackTree(Compare&& comp)
+    : _tree_size(0)
+    , _comp(std::move(comp))
+{
+    _nil = new Node();
+    _nil->color = BLACK;
+    _nil->left = _nil->right = _nil->parent = nullptr;
+    _root = _nil;
 }
 
 template<typename Key, typename T, typename Compare, bool AllowDuplicates>
